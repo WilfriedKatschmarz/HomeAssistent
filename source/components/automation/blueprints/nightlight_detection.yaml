@@ -1,0 +1,119 @@
+blueprint:
+  name: Nachtlichterkennung
+  description: "# Nachtlichterkennung\n
+    **Version 1.0**\n\n
+    Die Nachtlichterkennung empfiehlt, ob bei Dunkelheit eine Beleuchtung eingeschaltet werden sollte.\n 
+    Diese Beleuchtung dient dann zur einfachen Orientierung von Personen in deren Aufenhaltsbereich.\n"
+  domain: automation
+  source_url: https://github.com/WilfriedKatschmarz/HomeAssistent/blob/main/source/components/automation/blueprints/nightlight_detection.yaml
+  author: Wilfried Katschmarz
+  input:
+    nightlight_entity:
+      name: Sensor für das Nachtlicht
+      description: "Der Sensor für das Nachtlicht zeigt an, ob eine einfache Beleuchtung aktiviert werden sollte.\n
+        - **ON** - Beleuchtung sollte aktiviert werden.\n
+        - **OFF** - Beleuchtung nicht erforderlich.\n\n
+        Dieser Wert wird von der Nachtlichterkennung gesetzt."
+      selector:
+        entity:
+          filter:
+            domain: input_boolean
+    motion_entity:
+      name: Bewegungsmelder
+      description: "Der Bewegungsmelder ist verantwortlich für das Erkennen einer Person.
+        Beim Erkennen einer Bewegung wird angenommen, dass sich mindestens eine Person in diesem Aufenhaltsbereich befindet."
+      selector:
+        entity:
+          filter:
+            device_class: motion
+            domain: binary_sensor
+    no_motion_idle_time_entity:
+      name: Wartezeit nach Bewegung
+      description: "Nachdem der Bewegungsmelder keine Bewegung mehr registriert, 
+        wartet die Nachtlichterkennung die angegebene Wartezeit in Sekunden ab
+        und setzt den Sensor für das Nachtlicht wieder zurück."
+      selector:
+        entity:
+          filter:
+            domain: input_number
+    ambient_light_entity:
+      name: Sensor für das Umgebungslicht
+      description: "Der Sensor für das Umgebungslicht zeigt an, 
+        ob genug Umgebungslicht zur einfachen Orientierung vorhanden ist.\n
+        - **ON** - Umgebungslicht zur einfachen Orientierung vorhanden.\n
+        - **OFF** - Kein Umgebungslicht, zu Dunkel zum Orientieren.\n\n"
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor            
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input motion_entity
+    from: "off"
+    to: "on"
+    id: motion_detected
+  - platform: state
+    entity_id: !input ambient_light_entity
+    from: "on"
+    to: "off"
+    id: it_became_dark
+  - platform: state
+    entity_id: !input ambient_light_entity
+    from: "off"
+    to: "on"
+    id: it_became_light
+
+variables:
+  no_motion_idle_time_entity: !input "no_motion_idle_time_entity"
+  
+action:
+  - choose:
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: and
+                alias: "Bewegung bei Dunkelheit erkannt"
+                conditions:
+                  - condition: trigger
+                    id: motion_detected
+                  - condition: state
+                    entity_id: !input ambient_light_entity
+                    state: 'off'
+              - condition: and
+                alias: "Es wurde dunkel und es gab eine Bewegung"
+                conditions:
+                  - condition: trigger
+                    id: it_became_dark
+                  - condition: state
+                    entity_id: !input motion_entity
+                    state: 'on'
+        sequence:
+          - alias: "Setzen des Sensors für das Nachtlicht."
+            service: input_boolean.turn_on
+            target:
+              entity_id: !input nightlight_entity
+          - alias: "Abwarten, bis keine Bewegung mehr registriert wurde."
+            wait_for_trigger:
+              platform: state
+              entity_id: !input motion_entity
+              from: "on"
+              to: "off"
+          - alias: "Warten"
+            delay: "{{ states(no_motion_idle_time_entity) | int }}"
+          - alias: "Zurücksetzen des Sensors für das Nachtlicht."
+            service: input_boolean.turn_off
+            target:
+              entity_id: !input nightlight_entity            
+      - alias: "Es wurde hell"
+        conditions:
+          - condition: trigger
+            id: it_became_light
+        sequence:
+          - alias: "Rücksetzen des Sensors für das Nachtlicht."
+            service: input_boolean.turn_off
+            target:
+              entity_id: !input nightlight_entity

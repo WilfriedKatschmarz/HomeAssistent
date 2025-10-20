@@ -1,0 +1,314 @@
+blueprint:
+  name: Lichtsteuerung mit Fernbedienung
+  description: "# Lichtsteuerung mit Fernbedienung\n
+    **Version 1.0**\n\n
+    Die Lichtsteuerung mit Fernbedienung unterstützt folgende Aktionen:\n
+    - **Ein- und Ausschalten** im Umschalt- bzw. Toggle-Modus bei nur einer Ein- und Ausschalttaste\n
+    - **Ein- und Ausschalten** bei seperaten Einzeltasten für jeweils Ein- und Ausschalten\n
+    - **Szenenauswahl** mit Wahl zur nächsten oder zur vorherigen Szene\n
+    - **Einzelschritt Dimmen** für Helligkeitsänderung bei kurzen Drücken einer Taste\n
+    - **Kontinuierliches Dimmen** für Helligkeitsänderung bei dauerhaften Drücken einer Taste\n\n"
+  domain: automation
+  source_url: https://github.com/WilfriedKatschmarz/HomeAssistent/blob/main/source/components/automation/blueprints/remote_light_controlling.yaml
+  author: Wilfried Katschmarz
+  input:
+    remote_device:
+      name: Die Fernbedienung
+      description: "Folgende Fernbedienungen werden Unterstützt:\n
+        - **Remote Control N2** (Ikeas 4 Tasten Fernbedienung)\n
+        - **TRADFRI remote control** (Ikeas 5 Tasten Fernbedienung)\n
+        - **TRADFRI on/off switch** (Ikeas 2 Tasten Fernbedienung)\n\n"
+      selector:
+        device:
+          filter:
+            - integration: zha
+              manufacturer: IKEA of Sweden
+              model: TRADFRI remote control
+            - integration: zha
+              manufacturer: IKEA of Sweden
+              model: TRADFRI on/off switch
+            - integration: zha
+              manufacturer: IKEA of Sweden
+              model: Remote Control N2
+    list_of_scenes_entity:
+      name: Die Szenarien
+      description: "Eine Liste mit Szenarien, die mit der Fernbedienung ausgewählt werden können.\n
+        Beim Einschalten wird die zuletzt gewählte Szene aktiviert. 
+        Nach einer bestimmten Zeit wird für das nächste Einschalten wieder die erste Szene ausgewählt."
+      selector:
+        entity:
+          filter:
+            domain: input_select
+    list_of_lights_entity:
+      name: Die Lichter
+      description: "Eine Gruppe der Lichter, die mit der Fernbedienung aktiviert werden.\n
+      Bei folgenden Aktionen wird die Gruppe benötigt:\n
+        - **Einschalten** - Bei nur einer Taste im Umschalt- bzw. Toggle-Modus als Indikator, 
+          ob mindestens ein Licht an ist oder alle Lichter ausgeschaltet sind.\n
+        - **Ausschalten** - Alle Lichter der Gruppe werden ausgeschaltet.\n
+        - **Dimmen** - Alle eingeschalteten Lichter der Gruppe werden gedimmt.\n\n"
+      selector:
+        entity:
+          filter:
+            domain: light
+    scene_reset_time_entity:
+      name: Die Wartezeit zum Rücksetzen der Szenarien
+      description: "Nachdem eine Szene ausgewählt wurde wird diese beim Wiedereinschalten erneut ausgewählt.
+        Nach der angegebenen Zeit wird beim Wiedereinschalten die erste Szene ausgewählt."
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          unit_of_measurement: minutes
+          mode: slider
+            
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: event
+    event_type: zha_event
+    event_data:
+      device_id: !input remote_device
+condition: []   
+
+variables:
+  list_of_scenes_entity: !input "list_of_scenes_entity"
+  list_of_lights_entity: !input "list_of_lights_entity"
+  scene_reset_time_entity: !input "scene_reset_time_entity"
+  dim_single_step: 12
+  dim_loop_step: 6
+
+action:
+  - choose:
+  
+      # Ein-/Ausschalten (Togglen)
+      
+      - conditions:
+          - alias: "Ein-/Ausschalten (Toogle) gedrückt"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "toggle" }}'
+          - alias: "Kein Licht ist an"
+            condition: state
+            entity_id: !input list_of_lights_entity
+            state: 'off'
+        sequence:
+          - alias: "Szene aktivieren"
+            action: scene.turn_on
+            metadata: {}
+            target:
+              entity_id: "{{ states(list_of_scenes_entity) }}"
+      - conditions:
+          - alias: "Ein-/Ausschalten gedrückt (Toogle)"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "toggle" }}'
+          - alias: "Mindestens ein Licht ist an"
+            condition: state
+            entity_id: !input list_of_lights_entity
+            state: 'on'
+        sequence:
+          - alias: "Licht ausschalten"
+            action: light.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: !input list_of_lights_entity
+          - delay:
+              minutes: "{{ states(scene_reset_time_entity) | int }}"
+          - alias: "Erste Szene auswählen"
+            action: input_select.select_first
+            metadata: {}
+            target:
+              entity_id: !input list_of_scenes_entity
+
+      # Ein-/Ausschalten (Seperate Tasten)
+
+      - conditions:
+          - alias: "Einschalten gedrückt"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "on" }}'
+        sequence:
+          - alias: "Szene aktivieren"
+            action: scene.turn_on
+            metadata: {}
+            target:
+              entity_id: "{{ states(list_of_scenes_entity) }}"
+      - conditions:
+          - alias: "Ausschalten gedrückt"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "off" }}'
+        sequence:
+          - alias: "Licht ausschalten"
+            action: light.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: !input list_of_lights_entity
+          - delay:
+              minutes: "{{ states(scene_reset_time_entity) | int }}"
+          - alias: "Erste Szene auswählen"
+            action: input_select.select_first
+            metadata: {}
+            target:
+              entity_id: !input list_of_scenes_entity              
+    
+      # Szenenauswahl
+      
+      - conditions:
+          - alias: "Nächste Szene gedrückt (command)"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "press" }}'
+          - alias: "Nächste Szene gedrückt (args)"
+            condition: template
+            value_template: '{{ trigger.event.data.args == [256,13,0] }}'
+        sequence:
+          - alias: "Nächste Szene auswählen"
+            action: input_select.select_next
+            metadata: {}
+            data:
+              cycle: true
+            target:
+              entity_id: !input list_of_scenes_entity
+          - alias: "Szene aktivieren"
+            action: scene.turn_on
+            metadata: {}
+            target:
+              entity_id: "{{ states(list_of_scenes_entity) }}"
+      - conditions:
+          - alias: "Vorherige Szene gedrückt (command)"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "press" }}'
+        sequence:
+          - alias: "Vorherige Szene auswählen"
+            action: input_select.select_previous
+            metadata: {}
+            data:
+              cycle: true
+            target:
+              entity_id: !input list_of_scenes_entity
+          - alias: "Szene aktivieren"
+            action: scene.turn_on
+            metadata: {}
+            target:
+              entity_id: "{{ states(list_of_scenes_entity) }}"
+              
+      # Einzelschritt Dimmen
+      
+      - conditions:
+          - alias: "Hochdimmen gedrückt"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "step_with_on_off" }}'
+        sequence:
+          - alias: "Helligkeit erhöhen"
+            action: light.turn_on
+            target:
+              entity_id: >
+                {%- set lichter = states[list_of_lights_entity].attributes.entity_id -%}
+                {%- set results = namespace(licht=[]) %}
+                {%- for licht in lichter  -%}
+                {%- if is_state(licht, 'on') -%}
+                {%- set results.licht = results.licht + [licht] %}
+                {%- endif %}
+                {%- endfor -%}
+                {{ results.licht | join(', ') }}
+            data:
+              brightness: "{{ (state_attr(list_of_lights_entity, 'brightness') | int) + dim_single_step }}" 
+      - conditions:
+          - alias: "Runterdimmen gedrückt"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "step" }}'
+          - alias: "Über der Mindesthelligkeit"
+            condition: template
+            value_template: "{{ (state_attr(list_of_lights_entity, 'brightness') | int) > dim_single_step }}"
+        sequence:
+          - alias: "Helligkeit veringern"
+            action: light.turn_on
+            target:
+              entity_id: >
+                {%- set lichter = states[list_of_lights_entity].attributes.entity_id -%}
+                {%- set results = namespace(licht=[]) %}
+                {%- for licht in lichter  -%}
+                {%- if is_state(licht, 'on') -%}
+                {%- set results.licht = results.licht + [licht] %}
+                {%- endif %}
+                {%- endfor -%}
+                {{ results.licht | join(', ') }}
+            data:
+              brightness: "{{ (state_attr(list_of_lights_entity, 'brightness') | int) - dim_single_step }}"      
+              
+      # Kontinuierliches Dimmen
+
+      - conditions:
+          - alias: "Hochdimmen lange gedrückt"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "move_with_on_off" }}'
+        sequence:
+          - alias: "Helligkeit erhöhen"
+            repeat:
+              sequence:
+                - alias: "Helligkeit erhöhen"
+                  action: light.turn_on
+                  target:
+                    entity_id: >
+                      {%- set lichter = states[list_of_lights_entity].attributes.entity_id -%}
+                      {%- set results = namespace(licht=[]) %}
+                      {%- for licht in lichter  -%}
+                      {%- if is_state(licht, 'on') -%}
+                      {%- set results.licht = results.licht + [licht] %}
+                      {%- endif %}
+                      {%- endfor -%}
+                      {{ results.licht | join(', ') }}
+                  data:
+                    brightness_step: "{{ dim_loop_step }}"
+              until:
+                - alias: "Über der maximalen Helligkeit"
+                  condition: template
+                  value_template: "{{ (state_attr(list_of_lights_entity, 'brightness') | int) >= 255 }}"     
+      - conditions:
+          - alias: "Runterdimmen lange gedrückt"
+            condition: template
+            value_template: '{{ trigger.event.data.command == "move" }}'
+          - alias: "Über der Mindesthelligkeit"
+            condition: template
+            value_template: "{{ (state_attr(list_of_lights_entity, 'brightness') | int) > dim_loop_step }}"
+        sequence:
+          - alias: "Helligkeit veringern"
+            repeat:
+              sequence:
+                - alias: "Helligkeit veringern"
+                  action: light.turn_on
+                  target:
+                    entity_id: >
+                      {%- set lichter = states[list_of_lights_entity].attributes.entity_id -%}
+                      {%- set results = namespace(licht=[]) %}
+                      {%- for licht in lichter  -%}
+                      {%- if is_state(licht, 'on') -%}
+                      {%- set results.licht = results.licht + [licht] %}
+                      {%- endif %}
+                      {%- endfor -%}
+                      {{ results.licht | join(', ') }}
+                  data:
+                    brightness_step: "{{ -1 * dim_loop_step }}"
+              until:
+                - alias: "Unter der mindest Helligkeit"
+                  condition: template
+                  value_template: "{{ (state_attr(list_of_lights_entity, 'brightness') | int) < dim_loop_step }}"
+           
+     # Any other event will cancel the repeat loops.
+    default: []          
+    
+    # Long-Press on the power button 
+    # value_template: '{{ trigger.event.data.command == "move_to_level_with_on_off" }}'
+
+    # Long-Press on the dim-down button.
+    # value_template: '{{ trigger.event.data.command == "move" }}'
+
+    # Long-Press on the color-up button.
+    # value_template: '{{ trigger.event.data.command == "hold" }}'
+    # value_template: "{{ trigger.event.data.args == [3328,0] }}"
+
+    # Long-Press on the color-down button.
+    # value_template: '{{ trigger.event.data.command == "hold" }}'
+    # value_template: "{{ trigger.event.data.args == [3329,0] }}"
