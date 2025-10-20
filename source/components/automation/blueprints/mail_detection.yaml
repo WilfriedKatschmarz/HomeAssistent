@@ -5,7 +5,7 @@ blueprint:
     Diese Automatisierung meldet über einen Sensor für ''Neue Post'', dass ein Brief in den Briefkasten eingeworfen wurde.\n 
     Der Sensor wird wieder zurückgesetzt, wenn der Briefkasten entleert wird."
   domain: automation
-  # source_url: https://github.com/katschmarz/homeassistant/soure/mail_detection.yaml
+  source_url: https://github.com/WilfriedKatschmarz/HomeAssistent/blob/main/source/components/automation/blueprints/mail_detection.yaml
   author: Wilfried Katschmarz
   input:
     mail_detected_entity:
