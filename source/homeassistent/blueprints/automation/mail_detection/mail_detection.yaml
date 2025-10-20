@@ -1,0 +1,73 @@
+blueprint:
+  name: Posterkennung für den Briefkasten
+  description: "# Posterkennung für den Briefkasten\n
+    **Version 1.0**\n\n
+    Diese Automatisierung meldet über einen Sensor für ''Neue Post'', dass ein Brief in den Briefkasten eingeworfen wurde.\n 
+    Der Sensor wird wieder zurückgesetzt, wenn der Briefkasten entleert wird."
+  domain: automation
+  # source_url: https://github.com/katschmarz/homeassistant/soure/mail_detection.yaml
+  author: Wilfried Katschmarz
+  input:
+    mail_detected_entity:
+      name: 'Sensor für ''Neue Post'''
+      description: "Der Sensor für ''Neue Post'' zeigt an, ob sich ein Brief im Briefkasten befindet.\n
+        - **ON** - Es befindet sich Post im Briefkasten.\n
+        - **OFF** - Der Briefkasten ist leer.\n\n
+        Dieser Wert wird von der Posterkennung gesetzt."
+      selector:
+        entity:
+          filter:
+            domain: input_boolean
+    motion_entity:
+      name: Bewegungsmelder
+      description: "Der Bewegungsmelder ist verantwortlich für das Erkennen eines Briefeinwurfes. 
+        Der Melder muss so im Briefkasten eingebaut werden, dass er das Öffnen der Einwurfsklappe erkennt. 
+        Es wird dann vermutet, dass ein Brief eingeworfen wurde."
+      selector:
+        entity:
+          filter:
+            device_class: motion
+            domain: binary_sensor
+    # door_entity:
+    #   name: Türsensor
+    #   description: 'Der Türsensor (oder Fenstersensor) ist verantwortlich für das Erkennen der 
+    #     Entleerung des Briefkastens. 
+    #     Der Sensor muss so im Briefkasten eingebaut werden, dass er das Öffnen der Entnahmeklappe erkennt. 
+    #     Es wird dann vermutet, dass der Briefkasten entleert wurde.'
+    #   selector:
+    #     entity:
+    #       filter:
+    #         device_class: window
+    #         domain: binary_sensor
+
+# If motion is detected within the delay,
+# we restart the script.
+mode: restart
+max_exceeded: silent
+
+trigger:
+  platform: state
+  entity_id: !input motion_entity
+  from: "off"
+  to: "on"
+
+action:
+  - alias: "Set the mail detected flag."
+    service: input_boolean.turn_on
+    target:
+      entity_id: !input mail_detected_entity
+      
+      
+      
+#   - alias: "Wait until there is no motion"
+#     wait_for_trigger:
+#       platform: state
+#       entity_id: !input motion_entity
+#       from: "on"
+#       to: "off"
+  # - alias: "Wait the number of seconds that has been set"
+    # delay: !input no_motion_wait
+#   - alias: "Reset the mail detected flag."
+#     service: input_boolean.turn_off
+#     target:
+#       entity_id: !input mail_detected_entity
