@@ -1,0 +1,26 @@
+blueprint:
+  name: Nachricht ans Handy schicken
+  description: Dieses Script schickt eine Push-Nachricht an das Handy.
+  domain: script
+  source_url: https://github.com/WilfriedKatschmarz/HomeAssistent/blob/main/source/components/scripts/blueprints/send_message.yaml
+  author: Wilfried Katschmarz
+
+  input:
+    message:
+      name: Die Nachricht
+      description: Die zu verschickende Nachricht.
+      default: ''
+    title:
+      name: Der Titel
+      description: Der Titel der zu verschickenden Nachricht.
+      default: ''
+      
+variables:
+  message: !input message
+  title: !input title
+  
+sequence:
+  - action: notify.mobile_app_iphone_von_willy
+    data:
+      message: "{{message}}"
+      title: "{{title}}"

@@ -9,7 +9,6 @@ blueprint:
     - **Einzelschritt Dimmen** für Helligkeitsänderung bei kurzen Drücken einer Taste\n
     - **Kontinuierliches Dimmen** für Helligkeitsänderung bei dauerhaften Drücken einer Taste\n\n"
   domain: automation
-  source_url: https://github.com/WilfriedKatschmarz/HomeAssistent/blob/main/source/components/automation/blueprints/remote_light_controlling.yaml
   author: Wilfried Katschmarz
   input:
     remote_device:

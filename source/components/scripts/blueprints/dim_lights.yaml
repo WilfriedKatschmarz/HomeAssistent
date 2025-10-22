@@ -1,0 +1,33 @@
+blueprint:
+  name: Licht dimmen
+  description: Dieses Script dimmt alle aktiver Lichter einer Gruppe.
+  domain: script
+  source_url: https://github.com/WilfriedKatschmarz/HomeAssistent/blob/main/source/components/scripts/blueprints/dim_lights.yaml
+  author: Wilfried Katschmarz
+  
+  input:
+    gruppe:
+      name: Die Gruppe
+      description: Die Gruppe aller Lichter.
+      default: ''
+
+variables:
+  gruppe: light.beleuchtung_wohnzimmer
+  step: 50
+  
+sequence:
+  - alias: "Helligkeit veringern"
+    action: light.turn_on
+    target:
+      entity_id: >
+        {%- set lichter = states[gruppe].attributes.entity_id -%}
+        {%- set results = namespace(licht=[]) %}
+        {%- for licht in lichter  -%}
+        {%- if is_state(licht, 'on') -%}
+        {%- set results.licht = results.licht + [licht] %}
+        {%- endif %}
+        {%- endfor -%}
+        {{ results.licht | join(', ') }}
+    data:
+      brightness: "{{ (state_attr(gruppe, 'brightness') | int) - step }}"      
+   
