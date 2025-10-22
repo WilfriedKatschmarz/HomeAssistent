@@ -1,14 +1,19 @@
-# Home Assistent Scripts
+# Home Assistent Components
 
 Moin, Welt! 
 
 This repository contains a collection of scripts, blueprints and stuff for Home Assistant.
 
-## Supported Blueprints
+## Blueprints
 
 - Mail Detection
 - Remote Light Controlling
 - Nightlight Detection
+
+## Scripts
+
+- Dim Lights
+- Send Message
 
 ## Getting Started
 
@@ -24,6 +29,8 @@ Click to install a blueprint to your local Home Assistent.
 - [Mail Detection](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FWilfriedKatschmarz%2FHomeAssistent%2Fblob%2Fmain%2Fsource%2Fcomponents%2Fautomation%2Fblueprints%2Fmail_detection.yaml)
 - [Remote Light Controlling](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FWilfriedKatschmarz%2FHomeAssistent%2Fblob%2Fmain%2Fsource%2Fcomponents%2Fautomation%2Fblueprints%2Fremote_light_controlling.yaml)
 - [Nightlight Detection](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FWilfriedKatschmarz%2FHomeAssistent%2Fblob%2Fmain%2Fsource%2Fcomponents%2Fautomation%2Fblueprints%2Fnightlight_detection.yaml)
+- [Dim Lights](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FWilfriedKatschmarz%2FHomeAssistent%2Fblob%2Fmain%2Fsource%2Fcomponents%scripts%blueprints%2Fdim_lights.yaml)
+- [Send Message](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FWilfriedKatschmarz%2FHomeAssistent%2Fblob%2Fmain%2Fsource%2Fcomponents%scripts%2Fblueprints%2Fsend_message.yaml)
 
 Alternative you can do it manually by click on 'Import Blueprint' at 'Settings' | 'Automation & Scenes' | 'Blueprints' in your local Home Assistent app.
 
